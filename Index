@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FitTrack — Callisthénie</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --card: #16161f;
+    --border: #252535;
+    --accent: #7fff6e;
+    --accent2: #3dffc0;
+    --red: #ff4d6d;
+    --text: #f0f0f8;
+    --muted: #5a5a78;
+    --yellow: #ffd166;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(17,17,24,0.97);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 10px 0 18px;
+  }
+  .nav-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 500;
+    letter-spacing: .5px; text-transform: uppercase; padding: 6px 14px;
+    border-radius: 12px; transition: all .2s;
+  }
+  .nav-btn.active { color: var(--accent); }
+  .nav-btn svg { width: 22px; height: 22px; stroke-width: 1.8; }
+  .page { display: none; padding: 0 0 100px; min-height: 100vh; }
+  .page.active { display: block; }
+  .page-header {
+    padding: 52px 20px 20px;
+    background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .page-header h1 { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 1px; line-height: 1; }
+  .page-header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+  .section { padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .input-group { display: flex; flex-direction: column; gap: 6px; }
+  .input-group label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
+  .input-group input {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 18px; font-weight: 500;
+    padding: 12px 14px; width: 100%; outline: none; transition: border-color .2s;
+  }
+  .input-group input:focus { border-color: var(--accent); }
+  .btn-primary {
+    background: var(--accent); color: #0a0a0f; border: none; border-radius: 12px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1.5px;
+    padding: 14px; cursor: pointer; width: 100%; transition: opacity .2s;
+  }
+  .btn-primary:active { opacity: .8; }
+  .imc-display { text-align: center; padding: 20px; }
+  .imc-number { font-family: 'Bebas Neue', sans-serif; font-size: 72px; line-height: 1; }
+  .imc-label { font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+  .imc-bar-wrap { position: relative; height: 10px; border-radius: 99px; overflow: hidden; background: linear-gradient(90deg, #3b82f6 0%, var(--accent) 40%, var(--yellow) 65%, #f97316 80%, var(--red) 100%); margin: 16px 0 6px; }
+  .imc-cursor { position: absolute; top: -3px; width: 16px; height: 16px; border-radius: 50%; background: white; border: 3px solid var(--bg); box-shadow: 0 0 0 2px rgba(255,255,255,.5); transform: translateX(-50%); transition: left .5s cubic-bezier(.34,1.56,.64,1); }
+  .imc-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .badge { display: inline-block; padding: 4px 12px; border-radius: 99px; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+  .badge-green { background: rgba(127,255,110,.15); color: var(--accent); border: 1px solid rgba(127,255,110,.3); }
+  .badge-yellow { background: rgba(255,209,102,.15); color: var(--yellow); border: 1px solid rgba(255,209,102,.3); }
+  .badge-red { background: rgba(255,77,109,.15); color: var(--red); border: 1px solid rgba(255,77,109,.3); }
+  .badge-blue { background: rgba(59,130,246,.15); color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
+  .chart-wrap { position: relative; height: 220px; }
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-item { display: flex; align-items: center; justify-content: space-between; background: var(--bg2); border-radius: 10px; padding: 12px 14px; }
+  .history-item .date { font-size: 12px; color: var(--muted); }
+  .history-item .vals { font-size: 13px; font-weight: 500; }
+  .history-item .imc-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; }
+  .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px; }
+  .day-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px; scrollbar-width: none; }
+  .day-tabs::-webkit-scrollbar { display: none; }
+  .day-tab {
+    flex: 0 0 auto; padding: 8px 16px; border-radius: 99px; border: 1px solid var(--border);
+    background: var(--card); color: var(--muted); font-size: 12px; font-weight: 600;
+    letter-spacing: .5px; cursor: pointer; transition: all .2s; white-space: nowrap;
+  }
+  .day-tab.active { background: var(--accent); border-color: var(--accent); color: #0a0a0f; }
+  .day-tab.rest { border-color: rgba(255,77,109,.3); }
+  .day-tab.rest.active { background: var(--red); border-color: var(--red); }
+  .exercise-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .exercise-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; cursor: pointer; }
+  .exercise-name { font-size: 15px; font-weight: 600; }
+  .exercise-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .exercise-sets { background: rgba(127,255,110,.1); color: var(--accent); font-family: 'Bebas Neue', sans-serif; font-size: 20px; border-radius: 8px; padding: 4px 10px; }
+  .exercise-body { display: none; border-top: 1px solid var(--border); padding: 14px 16px; background: var(--bg2); }
+  .exercise-body.open { display: block; }
+  .exercise-body p { font-size: 13px; color: #b0b0c8; line-height: 1.6; }
+  .set-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .set-chip {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .set-chip.done { background: rgba(127,255,110,.15); border-color: var(--accent); color: var(--accent); }
+  .set-chip .check { font-size: 10px; }
+  .rest-card { text-align: center; padding: 40px 20px; }
+  .rest-icon { font-size: 56px; margin-bottom: 16px; }
+  .rest-card h2 { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1px; color: var(--red); }
+  .rest-card p { color: var(--muted); font-size: 14px; margin-top: 8px; line-height: 1.6; }
+  .reminder-card { padding: 16px; display: flex; align-items: center; gap: 14px; }
+  .reminder-icon { font-size: 28px; flex: 0 0 auto; }
+  .reminder-card h3 { font-size: 14px; font-weight: 600; }
+  .reminder-card p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .toggle-wrap { margin-left: auto; }
+  .toggle { position: relative; width: 44px; height: 24px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--border); border-radius: 99px; cursor: pointer; transition: .2s; }
+  .slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .2s; }
+  input:checked + .slider { background: var(--accent); }
+  input:checked + .slider:before { transform: translateX(20px); }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: center; }
+  .stat-box .val { font-family: 'Bebas Neue', sans-serif; font-size: 36px; line-height: 1; }
+  .stat-box .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-top: 4px; }
+  .goal-bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+  .goal-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width .5s; }
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px);
+    background: var(--accent); color: #0a0a0f; padding: 10px 20px; border-radius: 99px;
+    font-weight: 600; font-size: 13px; z-index: 999; transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .streak-display { display: flex; align-items: center; gap: 8px; }
+  .streak-fire { font-size: 24px; }
+  .streak-num { font-family: 'Bebas Neue', sans-serif; font-size: 48px; line-height: 1; color: var(--yellow); }
+  .streak-txt { font-size: 12px; color: var(--muted); }
+  .week-dots { display: flex; gap: 6px; }
+  .week-dot { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 9px; text-transform: uppercase; color: var(--muted); flex-direction: column; gap: 1px; font-weight: 600; }
+  .week-dot.done { background: rgba(127,255,110,.2); border-color: var(--accent); color: var(--accent); }
+  .week-dot.today { border-color: var(--yellow); }
+  .week-dot .dot-day { font-size: 8px; }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="page active" id="page-train">
+  <div class="page-header">
+    <h1>Programme</h1>
+    <p id="train-subtitle">Endomorphe · Niveau basique · Actif</p>
+  </div>
+  <div style="height:14px"></div>
+  <div class="day-tabs" id="day-tabs"></div>
+  <div class="section" id="exercises-container"></div>
+</div>
+<div class="page" id="page-imc">
+  <div class="page-header">
+    <h1>IMC & Poids</h1>
+    <p>Suis ta progression corporelle</p>
+  </div>
+  <div class="section">
+    <div class="card">
+      <div class="form-row">
+        <div class="input-group">
+          <label>Poids (kg)</label>
+          <input type="number" id="inp-poids" placeholder="75" min="30" max="250" step="0.1">
+        </div>
+        <div class="input-group">
+          <label>Taille (cm)</label>
+          <input type="number" id="inp-taille" placeholder="178" min="100" max="250">
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <button class="btn-primary" onclick="calcIMC()">CALCULER MON IMC</button>
+    </div>
+    <div class="card" id="imc-result-card" style="display:none">
+      <div class="imc-display">
+        <div class="imc-number" id="imc-val">—</div>
+        <div class="imc-label" id="imc-category"></div>
+        <div style="margin-top:10px" id="imc-badge-wrap"></div>
+      </div>
+      <div class="imc-bar-wrap"><div class="imc-cursor" id="imc-cursor"></div></div>
+      <div class="imc-labels">
+        <span>Sous-poids</span><span>Normal</span><span>Surpoids</span><span>Obèse</span>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;margin-bottom:14px">Évolution IMC</div>
+      <div class="chart-wrap"><canvas id="imc-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;margin-bottom:10px">Historique</div>
+      <div class="history-list" id="history-list"><p style="color:var(--muted);font-size:13px">Aucune mesure enregistrée.</p></div>
+    </div>
+  </div>
+</div>
+<div class="page" id="page-progress">
+  <div class="page-header">
+    <h1>Progression</h1>
+    <p>Ta semaine en un coup d'œil</p>
+  </div>
+  <div class="section">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600">Série en cours</div>
+          <div class="streak-display" style="margin-top:6px">
+            <span class="streak-fire">🔥</span>
+            <span class="streak-num" id="streak-num">0</span>
+            <div>
+              <div style="font-size:15px;font-weight:600">jours</div>
+              <div class="streak-txt">consécutifs</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;margin-bottom:8px;text-align:center">Cette semaine</div>
+          <div class="week-dots" id="week-dots"></div>
+        </div>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="val" id="stat-sessions" style="color:var(--accent)">0</div><div class="lbl">Séances</div></div>
+      <div class="stat-box"><div class="val" id="stat-exercises">0</div><div class="lbl">Exercices</div></div>
+      <div class="stat-box"><div class="val" id="stat-sets" style="color:var(--accent2)">0</div><div class="lbl">Séries totales</div></div>
+      <div class="stat-box"><div class="val" id="stat-imc-count" style="color:var(--yellow)">0</div><div class="lbl">Mesures IMC</div></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;margin-bottom:14px">Objectif semaine (5/7 jours)</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span id="goal-label" style="font-size:14px;font-weight:500"></span>
+        <span id="goal-pct" style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)"></span>
+      </div>
+      <div class="goal-bar"><div class="goal-fill" id="goal-fill"></div></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;margin-bottom:14px">Évolution du poids</div>
+      <div class="chart-wrap"><canvas id="weight-chart"></canvas></div>
+    </div>
+    <div class="card reminder-card">
+      <div class="reminder-icon">⏰</div>
+      <div>
+        <h3>Rappel d'entraînement</h3>
+        <p>Reçois une notification chaque jour</p>
+      </div>
+      <div class="toggle-wrap">
+        <label class="toggle">
+          <input type="checkbox" id="remind-toggle" onchange="toggleReminder(this)">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+<nav>
+  <button class="nav-btn active" onclick="showPage('train',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6.5 6.5h11M6.5 12h11M6.5 17.5h11" stroke-linecap="round"/><rect x="3" y="3" width="18" height="18" rx="4" stroke-linecap="round"/></svg>
+    Programme
+  </button>
+  <button class="nav-btn" onclick="showPage('imc',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3" stroke-linecap="round"/></svg>
+    IMC
+  </button>
+  <button class="nav-btn" onclick="showPage('progress',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="3 17 9 11 13 15 21 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Stats
+  </button>
+</nav>
+<script>
+const PROGRAM = [
+  { day: "Lun", name: "PUSH — Poitrine & Triceps", rest: false, exercises: [
+    { name: "Pompes classiques", sets: 4, reps: "12–15", muscle: "Poitrine", tip: "Mains à largeur d'épaules, corps droit comme une planche. Descends jusqu'à effleurer le sol." },
+    { name: "Pompes diamant", sets: 3, reps: "8–12", muscle: "Triceps", tip: "Mains formant un diamant sous la poitrine. Parfait pour les triceps." },
+    { name: "Dips sur chaise", sets: 3, reps: "10–12", muscle: "Triceps & Épaules", tip: "Chaise stable derrière toi, doigts vers l'avant, descends jusqu'à 90° aux coudes." },
+    { name: "Pike Push-ups", sets: 3, reps: "8–10", muscle: "Épaules", tip: "Hanches hautes, tête vers le sol. Simule un développé militaire." },
+  ]},
+  { day: "Mar", name: "PULL — Dos & Biceps", rest: false, exercises: [
+    { name: "Tractions (ou assistées)", sets: 4, reps: "5–8", muscle: "Dos & Biceps", tip: "Prise pronation, descends complètement, monte le menton au-dessus de la barre." },
+    { name: "Rows australiens", sets: 4, reps: "10–12", muscle: "Dos", tip: "Table ou barre basse, corps planche, tire la poitrine vers la barre." },
+    { name: "Curl biceps (serviette)", sets: 3, reps: "12–15", muscle: "Biceps", tip: "Accroche une serviette à une porte, penche-toi en arrière et fais des curls." },
+    { name: "Superman", sets: 3, reps: "15–20", muscle: "Bas du dos", tip: "Allongé ventre au sol, soulève bras et jambes simultanément. Tiens 2 sec." },
+  ]},
+  { day: "Mer", name: "LEGS — Jambes & Fessiers", rest: false, exercises: [
+    { name: "Squats bodyweight", sets: 4, reps: "15–20", muscle: "Quadriceps & Fessiers", tip: "Pieds à largeur d'épaules, orteils légèrement ouverts. Descends jusqu'à 90°." },
+    { name: "Fentes avant", sets: 3, reps: "12 par jambe", muscle: "Quadriceps", tip: "Grand pas en avant, genou arrière effleure le sol. Alterne les jambes." },
+    { name: "Squats sumo", sets: 3, reps: "15", muscle: "Adducteurs & Fessiers", tip: "Pieds très écartés, orteils à 45°. Descends profondément." },
+    { name: "Mollets debout", sets: 4, reps: "20–25", muscle: "Mollets", tip: "Debout sur une marche, monte sur la pointe des pieds. Descends lentement." },
+  ]},
+  { day: "Jeu", name: "REPOS ACTIF", rest: true, exercises: [] },
+  { day: "Ven", name: "CORE — Abdos & Gainage", rest: false, exercises: [
+    { name: "Planche", sets: 4, reps: "30–45 sec", muscle: "Core complet", tip: "Corps droit, hanches ni trop hautes ni trop basses. Respire régulièrement." },
+    { name: "Crunchs", sets: 3, reps: "20", muscle: "Abdos", tip: "Mains sur les tempes, monte les épaules du sol. Ne tire pas sur le cou." },
+    { name: "Mountain climbers", sets: 3, reps: "30 sec", muscle: "Core & Cardio", tip: "Position pompes, ramène les genoux vers la poitrine en alternant vite." },
+    { name: "Leg raises", sets: 3, reps: "12–15", muscle: "Bas des abdos", tip: "Allongé, jambes tendues, monte-les à 90° puis redescends sans toucher le sol." },
+  ]},
+  { day: "Sam", name: "FULL BODY", rest: false, exercises: [
+    { name: "Burpees", sets: 4, reps: "10", muscle: "Corps entier", tip: "Pompe, saut groupé. Pace régulière. Parfait pour brûler les graisses." },
+    { name: "Jumping jacks", sets: 3, reps: "40", muscle: "Cardio", tip: "Garde le rythme constant. Parfait pour chauffer ou finir la séance." },
+    { name: "Pompes + rotation", sets: 3, reps: "10", muscle: "Poitrine & Core", tip: "Après chaque pompe, ouvre sur le côté en tendant un bras vers le plafond." },
+    { name: "Squat jump", sets: 3, reps: "12", muscle: "Explosive & Jambes", tip: "Squat bas, puis explose vers le haut. Amortis bien la réception." },
+  ]},
+  { day: "Dim", name: "REPOS & RÉCUPÉRATION", rest: true, exercises: [] },
+];
+let state = JSON.parse(localStorage.getItem('fittrack_state') || JSON.stringify({ imcHistory: [], completedSets: {}, completedDays: {}, streak: 0 }));
+let imcChart = null, weightChart = null;
+const dayOfWeek = (new Date().getDay() + 6) % 7;
+let activeDayIdx = dayOfWeek;
+function save() { localStorage.setItem('fittrack_state', JSON.stringify(state)); }
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'progress') updateProgress();
+  if (id === 'imc') { updateHistory(); renderIMCChart(); }
+}
+function renderTraining() {
+  const tabs = document.getElementById('day-tabs');
+  tabs.innerHTML = '';
+  PROGRAM.forEach((d, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'day-tab' + (d.rest ? ' rest' : '') + (i === activeDayIdx ? ' active' : '');
+    btn.textContent = d.day;
+    btn.onclick = () => { activeDayIdx = i; renderTraining(); };
+    tabs.appendChild(btn);
+  });
+  const day = PROGRAM[activeDayIdx];
+  const container = document.getElementById('exercises-container');
+  container.innerHTML = '';
+  const title = document.createElement('div');
+  title.style.cssText = 'font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:1px;padding:0 2px';
+  title.textContent = day.name;
+  container.appendChild(title);
+  if (day.rest) {
+    const rc = document.createElement('div');
+    rc.className = 'card rest-card';
+    rc.innerHTML = `<div class="rest-icon">😴</div><h2>REPOS</h2><p>Aujourd'hui c'est récupération.<br>Étirements légers, hydratation, sommeil.<br>Ton corps se reconstruit pendant le repos.</p>`;
+    container.appendChild(rc);
+    markDayDone(); return;
+  }
+  day.exercises.forEach((ex, ei) => {
+    const card = document.createElement('div');
+    card.className = 'exercise-card';
+    const setsArr = Array.from({length: ex.sets}, (_, si) => si);
+    card.innerHTML = `
+      <div class="exercise-header" onclick="toggleEx(this)">
+        <div>
+          <div class="exercise-name">${setsArr.every(si => state.completedSets[activeDayIdx+'-'+ei+'-'+si]) ? '✅ ' : ''}${ex.name}</div>
+          <div class="exercise-meta">${ex.muscle} · ${ex.reps} reps</div>
+        </div>
+        <div class="exercise-sets">${ex.sets}×</div>
+      </div>
+      <div class="exercise-body" id="ex-body-${activeDayIdx}-${ei}">
+        <p>💡 ${ex.tip}</p>
+        <div class="set-row">
+          ${setsArr.map(si => {
+            const done = state.completedSets[activeDayIdx+'-'+ei+'-'+si];
+            return `<div class="set-chip ${done?'done':''}" onclick="toggleSet(${activeDayIdx},${ei},${si},this)"><span class="check">${done?'✓':''}</span> Série ${si+1}</div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    container.appendChild(card);
+  });
+  checkDayCompletion();
+}
+function toggleEx(header) { header.nextElementSibling.classList.toggle('open'); }
+function toggleSet(dayIdx, exIdx, setIdx, chip) {
+  const key = dayIdx+'-'+exIdx+'-'+setIdx;
+  state.completedSets[key] = !state.completedSets[key];
+  chip.classList.toggle('done');
+  chip.querySelector('.check').textContent = state.completedSets[key] ? '✓' : '';
+  save(); checkDayCompletion();
+}
+function checkDayCompletion() {
+  const day = PROGRAM[activeDayIdx];
+  if (day.rest) { markDayDone(); return; }
+  const allDone = day.exercises.every((ex, ei) => Array.from({length: ex.sets}, (_, si) => si).every(si => state.completedSets[activeDayIdx+'-'+ei+'-'+si]));
+  if (allDone) markDayDone();
+}
+function markDayDone() {
+  const today = new Date().toDateString();
+  if (!state.completedDays[today]) {
+    state.completedDays[today] = activeDayIdx;
+    updateStreak(); save();
+    showToast('🎉 Séance du jour complétée !');
+  }
+}
+function updateStreak() {
+  const today = new Date(); let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    if (state.completedDays[d.toDateString()]) streak++;
+    else if (i > 0) break;
+  }
+  state.streak = streak;
+}
+function calcIMC() {
+  const poids = parseFloat(document.getElementById('inp-poids').value);
+  const taille = parseFloat(document.getElementById('inp-taille').value);
+  if (!poids || !taille || poids < 30 || taille < 100) { showToast('⚠️ Vérifie tes valeurs'); return; }
+  const imc = poids / ((taille / 100) ** 2);
+  const imcRound = Math.round(imc * 100) / 100;
+  let cat, badgeClass;
+  if (imc < 18.5) { cat = 'Sous-poids'; badgeClass = 'badge-blue'; }
+  else if (imc < 25) { cat = 'Normal'; badgeClass = 'badge-green'; }
+  else if (imc < 30) { cat = 'Surpoids'; badgeClass = 'badge-yellow'; }
+  else { cat = 'Obèse'; badgeClass = 'badge-red'; }
+  document.getElementById('imc-val').textContent = imcRound;
+  document.getElementById('imc-category').textContent = cat;
+  document.getElementById('imc-badge-wrap').innerHTML = `<span class="badge ${badgeClass}">${cat}</span>`;
+  document.getElementById('imc-result-card').style.display = 'block';
+  const pct = Math.max(0, Math.min(100, ((imc - 15) / 25) * 100));
+  document.getElementById('imc-cursor').style.left = pct + '%';
+  const entry = { date: new Date().toLocaleDateString('fr-FR'), poids, taille, imc: imcRound, cat };
+  state.imcHistory.unshift(entry);
+  if (state.imcHistory.length > 50) state.imcHistory.pop();
+  save(); updateHistory(); renderIMCChart();
+  showToast('✅ Mesure enregistrée !');
+}
+function updateHistory() {
+  const list = document.getElementById('history-list');
+  if (!state.imcHistory.length) { list.innerHTML = '<p style="color:var(--muted);font-size:13px">Aucune mesure enregistrée.</p>'; return; }
+  list.innerHTML = state.imcHistory.slice(0,10).map((e, i) => `
+    <div class="history-item">
+      <div><div class="date">${e.date}</div><div class="vals">${e.poids}kg · ${e.taille}cm</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="imc-val">${e.imc}</div>
+        <button class="del-btn" onclick="deleteEntry(${i})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+function deleteEntry(i) { state.imcHistory.splice(i, 1); save(); updateHistory(); renderIMCChart(); }
+function renderIMCChart() {
+  const data = state.imcHistory.slice().reverse();
+  const ctx = document.getElementById('imc-chart').getContext('2d');
+  if (imcChart) imcChart.destroy();
+  imcChart = new Chart(ctx, { type: 'line', data: { labels: data.map(e => e.date), datasets: [{ label: 'IMC', data: data.map(e => e.imc), borderColor: '#7fff6e', backgroundColor: 'rgba(127,255,110,0.08)', pointBackgroundColor: '#7fff6e', pointRadius: 5, tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#5a5a78', font: { size: 10 } }, grid: { color: '#252535' } }, y: { ticks: { color: '#5a5a78', font: { size: 10 } }, grid: { color: '#252535' }, suggestedMin: 15, suggestedMax: 35 } } } });
+}
+function updateProgress() {
+  document.getElementById('streak-num').textContent = state.streak;
+  const exerciseDone = Object.keys(state.completedSets).filter(k => state.completedSets[k]).length;
+  document.getElementById('stat-sessions').textContent = Object.keys(state.completedDays).length;
+  document.getElementById('stat-exercises').textContent = exerciseDone > 0 ? Math.floor(exerciseDone / 4) : 0;
+  document.getElementById('stat-sets').textContent = exerciseDone;
+  document.getElementById('stat-imc-count').textContent = state.imcHistory.length;
+  const days = ['L','M','M','J','V','S','D'];
+  const today = new Date();
+  const weekDots = document.getElementById('week-dots');
+  weekDots.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - ((today.getDay()+6)%7) + i);
+    const done = !!state.completedDays[d.toDateString()];
+    const isToday = d.toDateString() === today.toDateString();
+    const dot = document.createElement('div');
+    dot.className = 'week-dot' + (done ? ' done' : '') + (isToday ? ' today' : '');
+    dot.innerHTML = `<span class="dot-day">${days[i]}</span>${done ? '✓' : ''}`;
+    weekDots.appendChild(dot);
+  }
+  const weekDone = Array.from({length:7}, (_,i) => { const d = new Date(today); d.setDate(d.getDate() - ((today.getDay()+6)%7) + i); return !!state.completedDays[d.toDateString()]; }).filter(Boolean).length;
+  const pct = Math.min(100, Math.round((weekDone / 5) * 100));
+  document.getElementById('goal-label').textContent = weekDone + ' / 5 jours';
+  document.getElementById('goal-pct').textContent = pct + '%';
+  document.getElementById('goal-fill').style.width = pct + '%';
+  const wData = state.imcHistory.slice().reverse();
+  const wCtx = document.getElementById('weight-chart').getContext('2d');
+  if (weightChart) weightChart.destroy();
+  weightChart = new Chart(wCtx, { type: 'line', data: { labels: wData.map(e => e.date), datasets: [{ label: 'Poids (kg)', data: wData.map(e => e.poids), borderColor: '#3dffc0', backgroundColor: 'rgba(61,255,192,0.08)', pointBackgroundColor: '#3dffc0', pointRadius: 5, tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#5a5a78', font: { size: 10 } }, grid: { color: '#252535' } }, y: { ticks: { color: '#5a5a78', font: { size: 10 } }, grid: { color: '#252535' } } } } });
+}
+function toggleReminder(el) {
+  if (el.checked) {
+    if ('Notification' in window) {
+      Notification.requestPermission().then(p => { if (p === 'granted') { showToast('⏰ Rappel activé !'); setTimeout(() => new Notification('💪 FitTrack', { body: "C'est l'heure de l'entraînement !" }), 3000); } else { el.checked = false; showToast('⚠️ Permission refusée'); } });
+    } else showToast('ℹ️ Notifications non supportées');
+  } else showToast('Rappel désactivé');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+renderTraining();
+</script>
+</body>
+</html>
